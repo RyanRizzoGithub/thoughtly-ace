@@ -221,8 +221,8 @@
       border: none;
       display: block;
       /* JS sets this precisely on load and resize */
-      min-height: 300px;
-      height: 70vh;
+      min-height: 450px;
+      height: 105vh;
     }
 
     /* ── CONTINUE BANNER ────────────────────────────────────── */
@@ -741,7 +741,7 @@
                    + document.querySelector(".hero").offsetHeight
                    + document.querySelector(".form-meta").offsetHeight
                    + 140; /* form-section padding + shell border/padding */
-    const h = Math.max(window.innerHeight - reserved, 300);
+    const h = Math.max((window.innerHeight - reserved) * 1.5, 300);
     iframe.style.height = h + "px";
   }
   fitIframe();
