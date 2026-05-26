@@ -438,53 +438,7 @@
   const iframe = document.getElementById("gform");
   iframe.src = GOOGLE_FORM_URL;
 
-  /* ── DEBUG PANEL ────────────────────────────────────────────────
-     Temporarily visible — shows every detectable event in real time.
-     Remove this block once the correct signal is identified.
-  ─────────────────────────────────────────────────────────────── */
-  const dbg = document.createElement("div");
-  dbg.id = "dbg";
-  dbg.style.cssText = [
-    "position:fixed","bottom:0","left:0","right:0","z-index:9999",
-    "background:rgba(0,0,0,0.88)","color:#7fff7f","font:12px/1.5 monospace",
-    "padding:10px 14px","max-height:220px","overflow-y:auto",
-    "border-top:2px solid #3d3"
-  ].join(";");
-  dbg.innerHTML = "<b style='color:#fff'>🔍 Debug — events will appear below on submit:</b><br>";
-  document.body.appendChild(dbg);
 
-  function log(msg) {
-    const t = new Date().toISOString().slice(11,23);
-    dbg.innerHTML += `<span style='color:#aaa'>[${t}]</span> ${msg}<br>`;
-    dbg.scrollTop = dbg.scrollHeight;
-    console.log("[ACE debug]", msg);
-  }
-
-  /* Log every postMessage regardless of origin */
-  window.addEventListener("message", (e) => {
-    log(`postMessage from <b>${e.origin}</b>: ${JSON.stringify(e.data).slice(0,200)}`);
-  }, true);
-
-  /* Log iframe load events */
-  iframe.addEventListener("load", () => {
-    log(`iframe load event fired (count: ${++window._lc||1})`);
-    window._lc = (window._lc||0) + 1;
-    try { log(`  → title: "${iframe.contentWindow.document.title}"`); } catch(e) { log(`  → title: [blocked cross-origin]`); }
-    try { log(`  → href: ${iframe.contentWindow.location.href}`); } catch(e) { log(`  → href: [blocked cross-origin]`); }
-  });
-
-  /* Poll every second — log anything that changes */
-  let _prevSrc = "", _prevTitle = "";
-  setInterval(() => {
-    if (iframe.src !== _prevSrc) {
-      log(`iframe.src changed → ${iframe.src}`);
-      _prevSrc = iframe.src;
-    }
-    try {
-      const t = iframe.contentWindow.document.title;
-      if (t !== _prevTitle) { log(`iframe title changed → "${t}"`); _prevTitle = t; }
-    } catch(e) {}
-  }, 500);
 
   /* ── Sticky header shadow on scroll ────────────────────────── */
   const header = document.getElementById("site-header");
@@ -502,89 +456,46 @@
   }
 
   /* ── Submission detection ───────────────────────────────────────
-    Microsoft Forms does a client-side (SPA) navigation on submit —
-    no second iframe load event fires. Three complementary signals:
+    Microsoft Forms is a cross-origin SPA — no load event, no
+    postMessage, no accessible URL fires on submit. The only
+    reliable solution is to configure Microsoft Forms to redirect
+    to a same-domain "bridge" page (submitted.html) after submit.
+    That bridge page immediately postMessages "ace-submitted" to
+    its parent, which this listener catches and redirects.
 
-    1. postMessage: MS Forms posts messages to the parent; we catch
-       any message from the trusted origin and inspect its content.
-    2. iframe title polling: after the form loads we poll
-       iframe.contentWindow.document.title every 500 ms. When the
-       thank-you page renders the title changes — cross-origin blocks
-       this, but it fires as a silent no-op so it costs nothing.
-    3. iframe.src change polling: contentWindow.location.href is also
-       blocked cross-origin, but the iframe element's own .src
-       attribute updates when a same-document navigation commits —
-       we watch for it changing away from the form URL.
-
-    All three run simultaneously; whichever fires first wins.
+    Setup (one-time, in Microsoft Forms):
+      Settings → After submission → Redirect to custom URL →
+      https://ace.bethoughtly.com/submitted.html
   ─────────────────────────────────────────────────────────────── */
-
-  /* 1. postMessage — catches any message-based signal MS may send */
   window.addEventListener("message", (e) => {
-    /* Accept any origin that is forms.office.com / microsoft.com */
-    if (!e.origin.includes("microsoft.com") && !e.origin.includes("office.com")) return;
-    const d = e.data;
-
-    /* Submission signals */
-    const raw = typeof d === "string" ? d : JSON.stringify(d ?? "");
-    const isSubmit =
-      raw.includes("submit") ||
-      raw.includes("thank") ||
-      raw.includes("ThankYou") ||
-      raw.includes("complete") ||
-      (typeof d === "object" && (d?.type === "formSubmit" || d?.submitted));
-
-    if (isSubmit) triggerRedirect();
+    if (e.origin !== "https://ace.bethoughtly.com") return;
+    if (e.data === "ace-submitted") triggerRedirect();
   });
 
-  /* 2 + 3. Polling — starts after first load, runs until redirect */
+  /* ── iframe load / loader hide ──────────────────────────────── */
   const loader = document.getElementById("form-loader");
-  let pollTimer  = null;
-  let formLoaded = false;
-
-  function startSubmitPoll() {
-    /* Poll every 500 ms indefinitely until submission detected */
-    pollTimer = setInterval(() => {
-
-      /* Attempt 2: read iframe title (same-origin only, no-op cross-origin) */
-      try {
-        const title = iframe.contentWindow.document.title || "";
-        const url   = iframe.contentWindow.location.href || "";
-        if (
-          title.toLowerCase().includes("thank") ||
-          url.includes("thank") ||
-          url.includes("submitted") ||
-          url !== GOOGLE_FORM_URL.split("?")[0]  /* URL changed from form */
-        ) { triggerRedirect(); }
-      } catch (e) { /* cross-origin — swallow */ }
-
-      /* Attempt 3: watch the iframe element src attribute itself */
-      const currentSrc = iframe.src || "";
-      if (
-        formLoaded &&
-        currentSrc &&
-        !currentSrc.includes("forms.office.com/r/LLMVeVE9uN")
-      ) { triggerRedirect(); }
-
-    }, 500);
-  }
-
-  /* ── iframe load events ─────────────────────────────────────── */
   let loadCount = 0;
+
+  /* Tiny counter badge — visible in corner so we can confirm
+     whether a 2nd load fires on submit. Remove once confirmed. */
+  const badge = document.createElement("div");
+  badge.style.cssText = "position:fixed;bottom:12px;right:12px;z-index:9999;background:#3D403C;color:#F8F7F4;font:11px monospace;padding:6px 10px;border-radius:4px;opacity:0.85";
+  badge.textContent = "loads: 0";
+  document.body.appendChild(badge);
+
   iframe.addEventListener("load", () => {
     loadCount++;
+    badge.textContent = "loads: " + loadCount;
     if (loadCount === 1) {
       loader.classList.add("hidden");
-      formLoaded = true;
-      startSubmitPoll();
       fitIframe();
     } else {
-      /* Hard navigation did fire — safe to redirect immediately */
+      /* 2nd load = thank-you page navigated into iframe */
       triggerRedirect();
     }
   });
 
-  /* ── Full-height iframe (same logic as before) ───────────────── */
+  /* ── Full-height iframe ──────────────────────────────────────── */
   function fitIframe() {
     try {
       const doc = iframe.contentWindow.document;
