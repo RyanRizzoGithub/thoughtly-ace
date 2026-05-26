@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thoughtly</title>
+
+  <!--
+  ═══════════════════════════════════════════════════════════════
+  CONFIGURATION — edit only these two lines
+  ═══════════════════════════════════════════════════════════════
+  -->
+  <script>
+    const GOOGLE_FORM_URL   = "https://docs.google.com/forms/d/e/YOUR_FORM_ID/viewform?embedded=true";
+    const REDIRECT_URL      = "https://www.bethoughtly.com/YOUR_NEXT_PAGE";
+  </script>
+  <!--
+  ═══════════════════════════════════════════════════════════════
+  END CONFIGURATION
+  ═══════════════════════════════════════════════════════════════
+  -->
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Georgia&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --parchment:  #F8F7F4;
+      --forest:     #3D403C;
+      --slate-blue: #7485A4;
+      --sand:       #E9DAC1;
+      --font-serif: Georgia, "Times New Roman", serif;
+      --font-sans:  "DM Sans", "Calibri", system-ui, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--parchment);
+      color: var(--forest);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Layout ─────────────────────────────────────────── */
+    .page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .wordmark {
+      font-family: var(--font-serif);
+      font-size: 1.1rem;
+      letter-spacing: 0.18em;
+      color: var(--forest);
+      text-transform: uppercase;
+      opacity: 0.7;
+      padding: 2rem 0 1.5rem;
+      text-decoration: none;
+    }
+
+    .divider {
+      width: 48px;
+      height: 1.5px;
+      background: var(--sand);
+      margin: 0 auto 2rem;
+    }
+
+    /* ── Form wrapper ───────────────────────────────────── */
+    .form-shell {
+      width: 100%;
+      max-width: 760px;
+      flex: 1;
+      padding: 0 1.25rem 3rem;
+      position: relative;
+    }
+
+    iframe#gform {
+      width: 100%;
+      min-height: 620px;
+      height: 80vh;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      display: block;
+      transition: opacity 0.4s;
+    }
+
+    /* ── Loading state ──────────────────────────────────── */
+    .loader {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      background: var(--parchment);
+      border-radius: 4px;
+      pointer-events: none;
+      transition: opacity 0.5s;
+    }
+    .loader.hidden { opacity: 0; }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--sand);
+      border-top-color: var(--slate-blue);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loader p {
+      font-size: 0.8rem;
+      color: var(--slate-blue);
+      letter-spacing: 0.06em;
+      opacity: 0.8;
+    }
+
+    /* ── Thank-you / redirect overlay ──────────────────── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--parchment);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.25rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+      z-index: 100;
+    }
+    .overlay.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .check-ring {
+      width: 56px;
+      height: 56px;
+      border: 2px solid var(--slate-blue);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: pop 0.4s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    @keyframes pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    .check-ring svg {
+      stroke: var(--slate-blue);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .overlay h2 {
+      font-family: var(--font-serif);
+      font-size: 1.5rem;
+      font-weight: normal;
+      color: var(--forest);
+    }
+
+    .overlay p {
+      font-size: 0.85rem;
+      color: var(--slate-blue);
+      letter-spacing: 0.04em;
+    }
+
+    .dots span {
+      display: inline-block;
+      animation: blink 1.2s infinite;
+    }
+    .dots span:nth-child(2) { animation-delay: 0.2s; }
+    .dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%,80%,100%{opacity:0} 40%{opacity:1} }
+
+    /* ── Footer ─────────────────────────────────────────── */
+    .foot {
+      padding: 1rem;
+      font-size: 0.7rem;
+      color: var(--forest);
+      opacity: 0.3;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <a class="wordmark" href="https://www.bethoughtly.com">Thoughtly</a>
+  <div class="divider"></div>
+
+  <div class="form-shell">
+    <!-- Loading indicator sits behind the iframe -->
+    <div class="loader" id="loader">
+      <div class="spinner"></div>
+      <p>Loading…</p>
+    </div>
+
+    <iframe
+      id="gform"
+      title="Design Brief"
+      allowfullscreen
+    ></iframe>
+  </div>
+
+  <p class="foot">bethoughtly.com</p>
+</div>
+
+<!-- Redirect overlay -->
+<div class="overlay" id="overlay" role="status" aria-live="polite">
+  <div class="check-ring">
+    <svg width="24" height="24" viewBox="0 0 24 24">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  </div>
+  <h2>You're all set.</h2>
+  <p>Taking you to the next step<span class="dots"><span>.</span><span>.</span><span>.</span></span></p>
+</div>
+
+<script>
+  /* ── Set the iframe src from config ──────────────────── */
+  const iframe = document.getElementById("gform");
+  iframe.src = GOOGLE_FORM_URL;
+
+  /* ── Hide loader once iframe loads ───────────────────── */
+  iframe.addEventListener("load", () => {
+    document.getElementById("loader").classList.add("hidden");
+
+    /* ── Detect submission ────────────────────────────────
+      Google Forms navigates the iframe to a "formResponse"
+      URL after the user hits Submit.  We watch for that
+      navigation via the load event (fires again) and check
+      the iframe's src / location (where cross-origin allows).
+
+      Because the form is cross-origin we can't read
+      iframe.contentWindow.location.href directly, but we CAN:
+        1. Watch for a second "load" event after the first
+           (the confirmation page always triggers one).
+        2. Catch the navigation via postMessage if you've
+           added the redirect snippet to your Google Form
+           (see README for the Apps Script method).
+
+      Both strategies run simultaneously — whichever fires
+      first triggers the redirect.
+    ─────────────────────────────────────────────────────── */
+    let loaded = 0;
+    iframe.addEventListener("load", () => {
+      loaded++;
+      if (loaded >= 1) triggerRedirect();   // 2nd load = confirmation page
+    });
+  });
+
+  /* ── Also listen for postMessage from the form ────────
+    If you use a Google Apps Script web-app redirect, or
+    a workaround that posts a message, catch it here.
+  ─────────────────────────────────────────────────────── */
+  window.addEventListener("message", (e) => {
+    /* Allow any origin from Google */
+    const trusted = ["https://docs.google.com", "https://forms.google.com"];
+    if (!trusted.some(o => e.origin.startsWith(o))) return;
+
+    const d = e.data;
+    /* Google Forms itself doesn't post messages natively,
+       but a custom confirmation page redirect script can.   */
+    if (
+      (typeof d === "string" && d.includes("formResponse")) ||
+      (typeof d === "object" && d?.type === "formSubmit")
+    ) {
+      triggerRedirect();
+    }
+  });
+
+  /* ── Redirect logic ───────────────────────────────────── */
+  let redirecting = false;
+  function triggerRedirect() {
+    if (redirecting) return;
+    redirecting = true;
+
+    /* Show the thank-you overlay */
+    document.getElementById("overlay").classList.add("visible");
+
+    /* Navigate after a short pause so the user sees it */
+    setTimeout(() => {
+      window.location.href = REDIRECT_URL;
+    }, 2200);
+  }
+</script>
+
+</body>
+</html>
