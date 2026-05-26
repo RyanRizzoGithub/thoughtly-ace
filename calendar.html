@@ -137,6 +137,94 @@
       font-style: italic;
     }
 
+    /* ── BOOKING CONFIRMED OVERLAY ───────────────────────────── */
+    .booked-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--parchment);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 500;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+      padding: 24px;
+      text-align: center;
+    }
+    .booked-overlay.show {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .booked-ring {
+      width: 64px;
+      height: 64px;
+      border: 1.5px solid var(--slate);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: pop 0.45s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    @keyframes pop { from { transform: scale(0.3); opacity: 0; } }
+    .booked-ring svg {
+      stroke: var(--slate);
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .booked-overlay h2 {
+      font-family: var(--serif);
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 400;
+      color: var(--forest);
+    }
+    .booked-overlay p {
+      font-size: 14px;
+      font-weight: 300;
+      color: var(--forest);
+      opacity: 0.58;
+      line-height: 1.7;
+      max-width: 360px;
+    }
+    .booked-divider {
+      width: 40px;
+      height: 1px;
+      background: var(--sand);
+    }
+    .booked-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      background: var(--forest);
+      color: var(--parchment);
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      padding: 14px 32px;
+      border-radius: 4px;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s;
+      margin-top: 4px;
+    }
+    .booked-btn:hover {
+      background: #2a2d29;
+      transform: translateY(-1px);
+    }
+    .booked-btn svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
     .site-footer { background: var(--forest); padding: 28px 40px; }
     .footer-inner {
       max-width: 1260px;
@@ -231,18 +319,59 @@
   </div>
 </footer>
 
+<!-- Booking confirmed overlay -->
+<div class="booked-overlay" id="booked-overlay" role="status" aria-live="polite">
+  <div class="booked-ring">
+    <svg width="26" height="26" viewBox="0 0 24 24">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  </div>
+  <h2>You're all booked.</h2>
+  <p>A confirmation has been sent to your email. We look forward to walking through your results together.</p>
+  <div class="booked-divider"></div>
+  <a class="booked-btn" href="https://bethoughtly.com">
+    Return to Thoughtly
+    <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+  </a>
+</div>
+
 <script src="https://assets.calendly.com/assets/external/widget.js" async></script>
 
 <script>
+  /* ── Sticky header ───────────────────────────────────────────── */
   const header = document.getElementById("site-header");
   window.addEventListener("scroll", () => {
     header.classList.toggle("scrolled", window.scrollY > 10);
   }, { passive: true });
 
-  /* Fade in the card shortly after page load */
+  /* ── Fade in Calendly card ───────────────────────────────────── */
   setTimeout(() => {
     document.getElementById("calendly-wrap").classList.add("visible");
   }, 120);
+
+  /* ── Booking detection ───────────────────────────────────────────
+    Calendly officially fires a postMessage with event type
+    "calendly.event_scheduled" when a booking is confirmed.
+    We listen for it and show the success overlay, then
+    automatically redirect to bethoughtly.com after 4 seconds.
+  ─────────────────────────────────────────────────────────────── */
+  const overlay = document.getElementById("booked-overlay");
+
+  function showBooked() {
+    overlay.classList.add("show");
+    /* Auto-redirect after 4 s — gives user time to read confirmation */
+    setTimeout(() => {
+      window.location.href = "https://bethoughtly.com";
+    }, 4000);
+  }
+
+  window.addEventListener("message", (e) => {
+    /* Calendly sends from calendly.com */
+    if (!e.origin.includes("calendly.com")) return;
+    if (e.data?.event === "calendly.event_scheduled") {
+      showBooked();
+    }
+  });
 </script>
 
 </body>
