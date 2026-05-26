@@ -455,70 +455,6 @@
     header.classList.toggle("scrolled", window.scrollY > 10);
   }, { passive: true });
 
-  /* ── Hide loader when iframe loads ─────────────────────────── */
-  const loader = document.getElementById("form-loader");
-  let loadCount = 0;
-
-  iframe.addEventListener("load", () => {
-    loadCount++;
-    if (loadCount === 1) {
-      /* First load = form ready */
-      loader.classList.add("hidden");
-      startPolling();
-    } else {
-      /* Second load = form submitted (Microsoft navigates to confirmation) */
-      triggerRedirect();
-    }
-  });
-
-  /* postMessage handled in full-height block above */
-
-  /* ── Full-height iframe ─────────────────────────────────────────
-    Google Forms is cross-origin so we can't read contentDocument.
-    Strategy:
-      1. CSS sets a generous starting height (2400px) — no inner
-         scrollbar while the form loads.
-      2. After load, attempt to read the true scrollHeight (works
-         if ever same-origin, silent no-op cross-origin).
-      3. Poll every 400 ms for 8 s post-load — catches lazy-rendered
-         content and Google's own post-load DOM mutations.
-      4. Listen for postMessage resize events (future-proof).
-    Result: iframe is always as tall as its content, the page
-    itself scrolls, and no inner scrollbar ever appears.
-  ─────────────────────────────────────────────────────────────── */
-  function fitIframe() {
-    try {
-      const doc = iframe.contentWindow.document;
-      const h = doc.documentElement.scrollHeight || doc.body.scrollHeight;
-      if (h && h > 100) { iframe.style.height = h + "px"; }
-    } catch (e) { /* cross-origin — CSS height stays in effect */ }
-  }
-
-  /* Poll for 8 s after each load to catch late-rendered content */
-  let pollTimer = null;
-  function startPolling() {
-    clearInterval(pollTimer);
-    let attempts = 0;
-    pollTimer = setInterval(() => {
-      fitIframe();
-      if (++attempts >= 20) clearInterval(pollTimer);
-    }, 400);
-  }
-
-  /* postMessage from Google (future-proof) */
-  window.addEventListener("message", (e) => {
-    const trusted = ["https://forms.office.com", "https://forms.microsoft.com"];
-    if (!trusted.some(o => e.origin.startsWith(o))) return;
-    const d = e.data;
-    if (typeof d === "object" && d?.height) {
-      iframe.style.height = d.height + "px";
-    }
-    if (
-      (typeof d === "string" && (d.includes("formResponse") || d.includes("thankyou"))) ||
-      (typeof d === "object" && d?.type === "formSubmit")
-    ) triggerRedirect();
-  });
-
   /* ── Redirect ────────────────────────────────────────────────── */
   let redirecting = false;
   function triggerRedirect() {
@@ -526,6 +462,98 @@
     redirecting = true;
     document.getElementById("redirect-overlay").classList.add("show");
     setTimeout(() => { window.location.href = REDIRECT_URL; }, 2200);
+  }
+
+  /* ── Submission detection ───────────────────────────────────────
+    Microsoft Forms does a client-side (SPA) navigation on submit —
+    no second iframe load event fires. Three complementary signals:
+
+    1. postMessage: MS Forms posts messages to the parent; we catch
+       any message from the trusted origin and inspect its content.
+    2. iframe title polling: after the form loads we poll
+       iframe.contentWindow.document.title every 500 ms. When the
+       thank-you page renders the title changes — cross-origin blocks
+       this, but it fires as a silent no-op so it costs nothing.
+    3. iframe.src change polling: contentWindow.location.href is also
+       blocked cross-origin, but the iframe element's own .src
+       attribute updates when a same-document navigation commits —
+       we watch for it changing away from the form URL.
+
+    All three run simultaneously; whichever fires first wins.
+  ─────────────────────────────────────────────────────────────── */
+
+  /* 1. postMessage — catches any message-based signal MS may send */
+  window.addEventListener("message", (e) => {
+    /* Accept any origin that is forms.office.com / microsoft.com */
+    if (!e.origin.includes("microsoft.com") && !e.origin.includes("office.com")) return;
+    const d = e.data;
+
+    /* Submission signals */
+    const raw = typeof d === "string" ? d : JSON.stringify(d ?? "");
+    const isSubmit =
+      raw.includes("submit") ||
+      raw.includes("thank") ||
+      raw.includes("ThankYou") ||
+      raw.includes("complete") ||
+      (typeof d === "object" && (d?.type === "formSubmit" || d?.submitted));
+
+    if (isSubmit) triggerRedirect();
+  });
+
+  /* 2 + 3. Polling — starts after first load, runs until redirect */
+  const loader = document.getElementById("form-loader");
+  let pollTimer  = null;
+  let formLoaded = false;
+
+  function startSubmitPoll() {
+    /* Poll every 500 ms indefinitely until submission detected */
+    pollTimer = setInterval(() => {
+
+      /* Attempt 2: read iframe title (same-origin only, no-op cross-origin) */
+      try {
+        const title = iframe.contentWindow.document.title || "";
+        const url   = iframe.contentWindow.location.href || "";
+        if (
+          title.toLowerCase().includes("thank") ||
+          url.includes("thank") ||
+          url.includes("submitted") ||
+          url !== GOOGLE_FORM_URL.split("?")[0]  /* URL changed from form */
+        ) { triggerRedirect(); }
+      } catch (e) { /* cross-origin — swallow */ }
+
+      /* Attempt 3: watch the iframe element src attribute itself */
+      const currentSrc = iframe.src || "";
+      if (
+        formLoaded &&
+        currentSrc &&
+        !currentSrc.includes("forms.office.com/r/LLMVeVE9uN")
+      ) { triggerRedirect(); }
+
+    }, 500);
+  }
+
+  /* ── iframe load events ─────────────────────────────────────── */
+  let loadCount = 0;
+  iframe.addEventListener("load", () => {
+    loadCount++;
+    if (loadCount === 1) {
+      loader.classList.add("hidden");
+      formLoaded = true;
+      startSubmitPoll();
+      fitIframe();
+    } else {
+      /* Hard navigation did fire — safe to redirect immediately */
+      triggerRedirect();
+    }
+  });
+
+  /* ── Full-height iframe (same logic as before) ───────────────── */
+  function fitIframe() {
+    try {
+      const doc = iframe.contentWindow.document;
+      const h = doc.documentElement.scrollHeight || doc.body.scrollHeight;
+      if (h && h > 100) iframe.style.height = h + "px";
+    } catch (e) { /* cross-origin — CSS height stays */ }
   }
 </script>
 
