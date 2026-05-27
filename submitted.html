@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Submitted — Thoughtly</title>
+  <style>
+    body {
+      margin: 0;
+      background: #F8F7F4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'DM Sans', Calibri, sans-serif;
+      color: #3D403C;
+    }
+    p { font-size: 14px; opacity: 0.5; letter-spacing: 0.04em; }
+  </style>
+</head>
+<body>
+  <p>Redirecting…</p>
+  <script>
+    try {
+      window.parent.postMessage("ace-submitted", "https://ace.bethoughtly.com");
+    } catch (e) {
+      /* If opened directly (not in iframe), just go home */
+      window.location.href = "https://ace.bethoughtly.com/next-steps.html";
+    }
+  </script>
+</body>
+</html>
