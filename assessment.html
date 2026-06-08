@@ -78,16 +78,16 @@
     /* ── HERO BAND ──────────────────────────────────────────── */
     .hero {
       background: var(--forest);
-      padding: 56px 40px 52px;
+      padding: 52px 40px 48px;
       text-align: center;
     }
     .hero-eyebrow {
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      font-size: 10.5px;
+      font-size: 11px;
       font-weight: 500;
-      letter-spacing: 0.16em;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
       color: var(--sand);
       opacity: 0.6;
@@ -104,10 +104,10 @@
     }
     .hero h1 {
       font-family: var(--serif);
-      font-size: clamp(26px, 4vw, 40px);
+      font-size: clamp(24px, 3.5vw, 38px);
       font-weight: 400;
       color: var(--parchment);
-      line-height: 1.2;
+      line-height: 1.22;
       margin-bottom: 16px;
     }
     .hero p {
@@ -121,7 +121,7 @@
     }
 
     @media (max-width: 600px) {
-      .hero { padding: 44px 24px 40px; }
+      .hero { padding: 40px 24px 36px; }
     }
 
     /* ── FORM SECTION ───────────────────────────────────────── */
@@ -167,7 +167,7 @@
       position: relative;
       background: #fff;
       border: 1px solid var(--sand);
-      border-radius: 6px;
+      border-radius: 8px;
       /* No overflow:hidden — lets iframe expand to full content height */
       box-shadow: 0 2px 24px rgba(61,64,60,0.06);
     }
@@ -176,7 +176,7 @@
     .form-iframe-wrap {
       padding: 32px 40px 40px;
       background: #fff;
-      border-radius: 6px;
+      border-radius: 8px;
     }
     @media (max-width: 600px) {
       .form-iframe-wrap { padding: 20px 16px 24px; }
@@ -187,7 +187,7 @@
       position: absolute;
       inset: 0;
       background: var(--parchment);
-      border-radius: 6px;
+      border-radius: 8px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -243,7 +243,7 @@
 
     .continue-banner {
       background: var(--forest);
-      border-radius: 6px;
+      border-radius: 8px;
       padding: 24px 28px;
       display: flex;
       align-items: center;
@@ -574,7 +574,7 @@
         <strong>Finished the assessment?</strong>
         <span>Only continue once you've submitted the form above.</span>
       </div>
-      <button class="continue-btn" id="continue-btn">
+      <button type="button" class="continue-btn" id="continue-btn">
         Continue
         <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
@@ -590,8 +590,8 @@
       <h3>All done?</h3>
       <p>Make sure you've hit <em>Submit</em> inside the form before continuing — you won't be able to come back.</p>
       <div class="confirm-actions">
-        <button class="confirm-cancel" id="confirm-cancel">Go back</button>
-        <button class="confirm-go" id="confirm-go">Yes, I've submitted</button>
+        <button type="button" class="confirm-cancel" id="confirm-cancel">Go back</button>
+        <button type="button" class="confirm-go" id="confirm-go">Yes, I've submitted</button>
       </div>
     </div>
   </div>
